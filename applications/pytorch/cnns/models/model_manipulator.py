@@ -107,8 +107,18 @@ def create_efficientnet(model_name, pretrained=False, num_classes=1000,
     return model
 
 
+def create_timm(model_name, pretrained=False, num_classes=1000):
+    model = timm.create_model(
+        model_name,
+        pretrained=pretrained,
+        num_classes=num_classes,
+        drop_rate=0.,
+        drop_path_rate=0.,
+    )
+    return model
+
+
 def _creating_modified_en_model(norm_layer, expand_ratio, group_dim):
-    uses_batch_norm = False
     if isinstance(norm_layer, partial):
         uses_batch_norm = norm_layer.func == torch.nn.BatchNorm2d
     else:

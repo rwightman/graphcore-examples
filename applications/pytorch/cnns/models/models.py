@@ -5,8 +5,8 @@ import torchvision
 import timm
 import poptorch
 import logging
-from .model_manipulator import create_efficientnet, create_mobilenetv3, residual_normlayer_init, replace_layer, get_module_and_parent_by_name, \
-                               load_modified_model, recompute_model, pad_first_conv, model_urls
+from .model_manipulator import create_efficientnet, create_mobilenetv3, create_timm, residual_normlayer_init, \
+    replace_layer, get_module_and_parent_by_name, load_modified_model, recompute_model, pad_first_conv, model_urls
 import sys
 import import_helper
 import datasets
@@ -39,14 +39,19 @@ available_models = {
         'dropout_rate': 0.4,
     },
 }
+for m in timm.list_models():
+    available_models['timm.' + m] = dict(
+        model=timm.models.registry.model_entrypoint(m),
+        input_shape=timm.models.get_model_default_value(m, 'input_size')
+    )
 
-available_model_types = [
+available_model_types = {
     torchvision.models.ResNet,
     torchvision.models.MobileNetV2,
     timm.models.EfficientNet,
     MobileNetV3_Large,
     MobileNetV3_Small
-]
+}
 
 
 def get_model(opts, data_info, pretrained=True, use_mixup=False, use_cutmix=False):
@@ -58,9 +63,19 @@ def get_model(opts, data_info, pretrained=True, use_mixup=False, use_cutmix=Fals
     use_mixup: use on-device mixup augmentation
     use_cutmix: use on-device cutmix augmentation
     """
-    norm_layer = get_norm_layer(opts)
 
-    if opts.model in available_models:
+    if opts.model.startswith('timm.'):
+        timm_model = opts.model.split('.')[1]
+        # FIXME pass through norm config? would break 'pretrained' so maybe best just to
+        # define new timm models.
+        # norm_layer = get_norm_layer(opts)
+        model = create_timm(
+            timm_model,
+            pretrained=pretrained,
+            num_classes=data_info["out"],
+        )
+    elif opts.model in available_models:
+        norm_layer = get_norm_layer(opts)
         if 'efficientnet' in opts.model:
             model = available_models[opts.model]["model"](
                 pretrained=pretrained,
@@ -94,7 +109,11 @@ def get_model(opts, data_info, pretrained=True, use_mixup=False, use_cutmix=Fals
 
     if opts.normalization_location == "ipu":
         cast = "half" if opts.precision[:3] == "16." else "full"
-        model = NormalizeInputModel(model, datasets.normalization_parameters["mean"], datasets.normalization_parameters["std"], output_cast=cast)
+        model = NormalizeInputModel(
+            model,
+            datasets.normalization_parameters["mean"],
+            datasets.normalization_parameters["std"],
+            output_cast=cast)
 
     if use_mixup or use_cutmix:
         model = augmentations.AugmentationModel(model, use_mixup, use_cutmix, opts)
@@ -116,19 +135,30 @@ def load_model_state_dict(model, state_dict):
     model = _get_nested_model(model)
     model.load_state_dict(state_dict)
 
+#
+# def _get_nested_model(model):
+#     while not any(isinstance(model, mt) for mt in available_model_types) and not isinstance(model, torch.fx.GraphModule):
+#         if hasattr(model, 'model'):
+#             model = model.model
+#         elif hasattr(model, 'module'):
+#             model = model.module
+#         else:
+#             raise AttributeError(
+#                 "The models._get_nested_model function encountered "
+#                 "a non-expected nested model attribute. Maybe a new "
+#                 "type needs to be added to models.available_model_types?")
+#     return model
+
 
 def _get_nested_model(model):
-    while not any(isinstance(model, mt) for mt in available_model_types) and not isinstance(model, torch.fx.GraphModule):
-        if hasattr(model, 'model'):
-            model = model.model
-        elif hasattr(model, 'module'):
-            model = model.module
-        else:
-            raise AttributeError(
-                "The models._get_nested_model function encountered "
-                "a non-expected nested model attribute. Maybe a new "
-                "type needs to be added to models.available_model_types?")
-    return model
+    if isinstance(model, torch.fx.GraphModule):
+        return model
+    if hasattr(model, 'module'):  # unwrap DDP or EMA
+        return _get_nested_model(model.module)
+    elif hasattr(model, 'model'):  # unwrap Bench -> model
+        return _get_nested_model(model.model)
+    else:
+        return model
 
 
 def pipeline_model(model, pipeline_splits):
