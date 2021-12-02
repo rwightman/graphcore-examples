@@ -65,13 +65,16 @@ def parse_arguments():
                         "Example: 100 epoch, initial loss scaling 16, loss scaling 128: Epoch 1-25 ls=16;Epoch 26-50 ls=32;Epoch 51-75 ls=64;Epoch 76-100 ls=128")
     parser.add_argument('--enable-stochastic-rounding', action="store_true", help="Enable Stochastic Rounding")
     parser.add_argument('--enable-fp-exceptions', action="store_true", help="Enable Floating Point Exceptions")
-    parser.add_argument('--webdataset-percentage-to-use', type=int, default=100, choices=range(1, 101), help="Percentage of dataset to be used for traini")
+    parser.add_argument('--webdataset-percentage-to-use', type=int, default=100, choices=range(1, 101), help="Percentage of dataset to be used for training.")
     parser.add_argument('--use-bbox-info', action='store_true', help='Use bbox information for training: reject the augmenetation, which does not overlap with the object.')
     parser.add_argument('--mixup-alpha', type=float, default=0.0, help="The first shape parameter of the beta distribution used to sample mixup coefficients. The second shape parameter is the same as the first one. Value of 0.0 means mixup is disabled.")
     parser.add_argument('--cutmix-lambda-low', type=float, default=0.0, help="Lower bound for the cutmix lambda coefficient (lambda is sampled uniformly from [low, high)). If both bounds are set to 0.0 or 1.0, cutmix is disabled. If both bounds are equal, lambda always equals that value.")
     parser.add_argument('--cutmix-lambda-high', type=float, default=0.0, help="Higher bound for the cutmix lambda coefficient (lambda is sampled uniformly from [low, high)). If both bounds are set to 0.0 or 1.0, cutmix is disabled. If both bounds are equal, lambda always equals that value.")
     parser.add_argument('--cutmix-disable-prob', type=float, default=0.0, help="Probability that cutmix is disabled for a particular batch.")
     parser.add_argument("--compile-only", action="store_true", help="Create an offline IPU target that can only be used for offline compilation.")
+
+    parser.add_argument('--drop-rate', type=float, default=0.0, metavar='PCT', help='Dropout rate.')
+    parser.add_argument('--drop-path-rate', type=float, default=0.0, metavar='PCT', help='Drop path rate.')
 
     # weight averaging params
     weight_avg.add_parser_arguments(parser)

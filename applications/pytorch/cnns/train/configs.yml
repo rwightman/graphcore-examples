@@ -168,3 +168,76 @@ mobilenet-v3-large-pod16:
   replicas: 4
   gradient_accumulation: 8
   enable_stochastic_rounding: false
+
+
+timm_resnetv2_50d_gn: &timm_resnetv2_50d_gn
+  <<: *resnet50
+  model: timm.resnetv2_50d_gn
+  precision: "16.16"
+  momentum: 0.9
+  lr: 2.0
+  lr_schedule: cosine
+  batch_size: 16
+  label_smoothing: 0.1
+  drop_rate: 0.1
+  drop_path_rate: 0.05
+  weight_decay: 0.00002
+  optimizer: sgd_combined
+  warmup_epoch: 5
+  epoch: 400
+  pipeline_splits: []
+  replicas: 16
+  gradient_accumulation: 50
+  device_iterations: 1
+  offload_optimizer: false
+  half_partial: true
+  eight_bit_io: true
+  normalization_location: ipu
+  use_bbox_info: true
+  exchange_memory_target: memory
+  recompute_mode: manual
+  recompute_checkpoints: [add, add/1, add/2, add/3, add/5, add/6, add/7, add/9, add/11, add/12]
+  disable_stable_batchnorm: true
+  available_memory_proportion: [0.12]
+
+
+timm_resnetv2_50d_gn_lamb: &timm_resnetv2_50d_gn_lamb
+  <<: *timm_resnetv2_50d_gn
+  model: timm.timm_resnetv2_50d_gn
+  precision: "16.16"
+  lr: .002
+  weight_decay: 0.02
+  optimizer: lamb
+
+
+timm_resnetv2_50d_evos0: &timm_resnetv2_50d_evos0
+  <<: *resnet50
+  model: timm.resnetv2_50d_evos0
+  precision: "16.16"
+  momentum: 0.9
+  lr: 2.0
+  lr_schedule: cosine
+  batch_size: 16
+  label_smoothing: 0.1
+  drop_rate: 0.1
+  drop_path_rate: 0.05
+  weight_decay: 0.00002
+  optimizer: sgd_combined
+  warmup_epoch: 5
+  epoch: 400
+  pipeline_splits: []
+  replicas: 16
+  gradient_accumulation: 57
+  device_iterations: 1
+  offload_optimizer: false
+  half_partial: true
+  eight_bit_io: true
+  normalization_location: ipu
+  use_bbox_info: true
+  exchange_memory_target: memory
+  recompute_mode: manual
+  recompute_checkpoints: [add, add/1, add/2, add/3, add/5, add/6, add/7, add/9, add/11, add/12]
+  disable_stable_batchnorm: true
+  available_memory_proportion: [0.12]
+
+

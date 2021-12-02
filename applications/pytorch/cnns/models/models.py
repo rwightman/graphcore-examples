@@ -73,6 +73,8 @@ def get_model(opts, data_info, pretrained=True, use_mixup=False, use_cutmix=Fals
             timm_model,
             pretrained=pretrained,
             num_classes=data_info["out"],
+            drop_rate=opts.drop_rate,
+            drop_path_rate=opts.drop_path_rate,
         )
     elif opts.model in available_models:
         norm_layer = get_norm_layer(opts)

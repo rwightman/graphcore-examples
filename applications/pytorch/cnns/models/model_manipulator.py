@@ -107,13 +107,23 @@ def create_efficientnet(model_name, pretrained=False, num_classes=1000,
     return model
 
 
-def create_timm(model_name, pretrained=False, num_classes=1000):
+def create_timm(
+        model_name,
+        pretrained=False,
+        num_classes=1000,
+        drop_rate=0.,
+        drop_path_rate=None,
+):
+    extra_kwargs = {}
+    if drop_path_rate:
+        # not all models support this arg
+        extra_kwargs['drop_path_rate'] = drop_path_rate
     model = timm.create_model(
         model_name,
         pretrained=pretrained,
         num_classes=num_classes,
-        drop_rate=0.,
-        drop_path_rate=0.,
+        drop_rate=drop_rate,
+        **extra_kwargs
     )
     return model
 

@@ -10,7 +10,7 @@ import popdist
 import horovod.torch as hvd
 import numpy as np
 
-from poptorch.optim import SGD, RMSprop, AdamW
+from poptorch.optim import SGD, RMSprop, AdamW, LAMB
 from lr_schedule import WarmUpLRDecorator, PeriodicLRDecorator
 from torch.optim.lr_scheduler import MultiStepLR, CosineAnnealingLR, ExponentialLR
 from train_utils import parse_arguments
@@ -268,19 +268,39 @@ def get_optimizer(opts, model):
         {'params': regularized_params, 'weight_decay': opts.weight_decay},
         {'params': non_regularized_params, 'weight_decay': 0}
     ]
+    if opts.optimizer == 'LAMB':
+        params[1]['max_weight_norm'] = 0
 
     optimizer = None
     if opts.optimizer == 'sgd':
-        optimizer = SGD(params, lr=opts.lr, momentum=opts.momentum, loss_scaling=opts.initial_loss_scaling, use_combined_accum=False)
+        optimizer = SGD(
+            params, lr=opts.lr, momentum=opts.momentum,
+            loss_scaling=opts.initial_loss_scaling, use_combined_accum=False)
     elif opts.optimizer == 'sgd_combined':
-        optimizer = SGD(params, lr=opts.lr, momentum=opts.momentum, loss_scaling=opts.initial_loss_scaling, velocity_scaling=opts.initial_loss_scaling / opts.loss_velocity_scaling_ratio, use_combined_accum=True)
+        optimizer = SGD(
+            params, lr=opts.lr, momentum=opts.momentum,
+            loss_scaling=opts.initial_loss_scaling,
+            velocity_scaling=opts.initial_loss_scaling / opts.loss_velocity_scaling_ratio,
+            use_combined_accum=True)
     elif opts.optimizer == 'adamw':
-        optimizer = AdamW(params, lr=opts.lr, loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps)
+        optimizer = AdamW(
+            params, lr=opts.lr,
+            loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps)
     elif opts.optimizer == 'rmsprop':
-        optimizer = RMSprop(params, lr=opts.lr, alpha=opts.rmsprop_decay, momentum=opts.momentum, loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps)
+        optimizer = RMSprop(
+            params, lr=opts.lr, alpha=opts.rmsprop_decay, momentum=opts.momentum,
+            loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps)
     elif opts.optimizer == 'rmsprop_tf':
-        optimizer = RMSprop(params, lr=opts.lr, alpha=opts.rmsprop_decay, momentum=opts.momentum, loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps, use_tf_variant=True)
-
+        optimizer = RMSprop(
+            params, lr=opts.lr, alpha=opts.rmsprop_decay, momentum=opts.momentum,
+            loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps, use_tf_variant=True)
+    elif opts.optimizer == 'lamb':
+        optimizer = LAMB(
+            params, lr=opts.lr,
+            loss_scaling=opts.initial_loss_scaling,
+            eps=opts.optimizer_eps,
+            max_weight_norm=None)
+        optimizer.variable_attrs.markAsConstant("max_weight_norm")
     # Make optimizers distributed
     if opts.use_popdist:
         hvd.broadcast_parameters(model.state_dict(), root_rank=0)
@@ -315,11 +335,15 @@ def get_lr_scheduler(opts, optimizer, step_per_epoch, start_epoch=0):
     scheduler_freq = opts.lr_scheduler_freq if opts.lr_scheduler_freq > 0.0 else step_per_epoch
     scheduler_last_epoch = (scheduler_freq * start_epoch) - 1
     if opts.lr_schedule == "step":
-        lr_scheduler = MultiStepLR(optimizer=optimizer, milestones=[step*scheduler_freq for step in opts.lr_epoch_decay], gamma=opts.lr_decay, last_epoch=scheduler_last_epoch)
+        lr_scheduler = MultiStepLR(
+            optimizer=optimizer, milestones=[step*scheduler_freq for step in opts.lr_epoch_decay],
+            gamma=opts.lr_decay, last_epoch=scheduler_last_epoch)
     elif opts.lr_schedule == "cosine":
-        lr_scheduler = CosineAnnealingLR(optimizer=optimizer, T_max=opts.epoch*scheduler_freq, last_epoch=scheduler_last_epoch)
+        lr_scheduler = CosineAnnealingLR(
+            optimizer=optimizer, T_max=opts.epoch*scheduler_freq, last_epoch=scheduler_last_epoch)
     elif opts.lr_schedule == "exponential":
-        lr_scheduler = ExponentialLR(optimizer=optimizer, gamma=opts.lr_decay, last_epoch=scheduler_last_epoch)
+        lr_scheduler = ExponentialLR(
+            optimizer=optimizer, gamma=opts.lr_decay, last_epoch=scheduler_last_epoch)
 
     lr_scheduler = PeriodicLRDecorator(optimizer=optimizer, lr_scheduler=lr_scheduler, period=1./scheduler_freq)
     lr_scheduler = WarmUpLRDecorator(optimizer=optimizer, lr_scheduler=lr_scheduler, warmup_epoch=opts.warmup_epoch)
