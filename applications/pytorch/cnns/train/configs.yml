@@ -181,6 +181,9 @@ timm_resnetv2_50d_gn: &timm_resnetv2_50d_gn
   label_smoothing: 0.1
   drop_rate: 0.1
   drop_path_rate: 0.05
+  mixup_alpha: 0.2
+  cutmix_lambda_low: 0.6
+  cutmix_lambda_high: 1.0
   weight_decay: 0.00002
   optimizer: sgd_combined
   warmup_epoch: 5
@@ -208,6 +211,7 @@ timm_resnetv2_50d_gn_lamb: &timm_resnetv2_50d_gn_lamb
   lr: .002
   weight_decay: 0.02
   optimizer: lamb
+  optimizer_eps: 1e-6
 
 
 timm_resnetv2_50d_evos0: &timm_resnetv2_50d_evos0
@@ -221,6 +225,9 @@ timm_resnetv2_50d_evos0: &timm_resnetv2_50d_evos0
   label_smoothing: 0.1
   drop_rate: 0.1
   drop_path_rate: 0.05
+  mixup_alpha: 0.2
+  cutmix_lambda_low: 0.6
+  cutmix_lambda_high: 1.0
   weight_decay: 0.00002
   optimizer: sgd_combined
   warmup_epoch: 5
