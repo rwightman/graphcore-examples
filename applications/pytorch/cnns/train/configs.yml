@@ -173,14 +173,14 @@ mobilenet-v3-large-pod16:
 timm_resnetv2_50d_gn: &timm_resnetv2_50d_gn
   <<: *resnet50
   model: timm.resnetv2_50d_gn
-  precision: "16.16"
+  precision: "16.32"
   momentum: 0.9
-  lr: 2.0
+  lr: 1.8
   lr_schedule: cosine
-  batch_size: 16
+  batch_size: 4
   label_smoothing: 0.1
   drop_rate: 0.1
-  drop_path_rate: 0.05
+  #drop_path_rate: 0.05
   mixup_alpha: 0.2
   cutmix_lambda_low: 0.6
   cutmix_lambda_high: 1.0
@@ -190,7 +190,7 @@ timm_resnetv2_50d_gn: &timm_resnetv2_50d_gn
   epoch: 400
   pipeline_splits: []
   replicas: 16
-  gradient_accumulation: 50
+  gradient_accumulation: 56
   device_iterations: 1
   offload_optimizer: false
   half_partial: true
@@ -199,6 +199,7 @@ timm_resnetv2_50d_gn: &timm_resnetv2_50d_gn
   use_bbox_info: true
   exchange_memory_target: memory
   recompute_mode: manual
+  #recompute_checkpoints: [add, add/2, add/4, add/6, add/10, add/12, add/14, add/18, add/22, add/24]
   recompute_checkpoints: [add, add/1, add/2, add/3, add/5, add/6, add/7, add/9, add/11, add/12]
   disable_stable_batchnorm: true
   available_memory_proportion: [0.12]
@@ -209,22 +210,21 @@ timm_resnetv2_50d_gn_lamb: &timm_resnetv2_50d_gn_lamb
   model: timm.timm_resnetv2_50d_gn
   precision: "16.16"
   lr: .002
-  weight_decay: 0.02
+  weight_decay: 0.01
   optimizer: lamb
-  optimizer_eps: 1e-6
+  optimizer_eps: .000001
 
 
 timm_resnetv2_50d_evos0: &timm_resnetv2_50d_evos0
   <<: *resnet50
   model: timm.resnetv2_50d_evos0
-  precision: "16.16"
+  precision: "16.32"
   momentum: 0.9
-  lr: 2.0
+  lr: 1.8
   lr_schedule: cosine
-  batch_size: 16
+  batch_size: 4
   label_smoothing: 0.1
   drop_rate: 0.1
-  drop_path_rate: 0.05
   mixup_alpha: 0.2
   cutmix_lambda_low: 0.6
   cutmix_lambda_high: 1.0
@@ -248,3 +248,12 @@ timm_resnetv2_50d_evos0: &timm_resnetv2_50d_evos0
   available_memory_proportion: [0.12]
 
 
+timm_efficientnet_b0_gn:
+  <<: *efficientnet-g16-gn-16ipu-mk2-base
+  model: timm.efficientnet_b0_gn
+  pipeline_splits: [blocks/3/0]
+  lr: 0.06
+  batch_size: 16
+  replicas: 8
+  gradient_accumulation: 5
+  mixup_alpha: 0.1

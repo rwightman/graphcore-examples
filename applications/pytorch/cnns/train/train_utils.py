@@ -63,6 +63,7 @@ def parse_arguments():
     parser.add_argument('--loss-velocity-scaling-ratio', type=float, default=1.0, help="Only for sgd_combined optimizer: Loss Velocity / Velocity scaling ratio. In case of large number of replicas >1.0 can increase numerical stability")
     parser.add_argument('--initial-loss-scaling', type=float, help="Initial loss scaling factor. The loss scaling interpolates between this and loss-scaling value."
                         "Example: 100 epoch, initial loss scaling 16, loss scaling 128: Epoch 1-25 ls=16;Epoch 26-50 ls=32;Epoch 51-75 ls=64;Epoch 76-100 ls=128")
+    parser.add_argument('--auto-loss-scaling', action="store_true", help="Enable Automatic Loss Scaling")
     parser.add_argument('--enable-stochastic-rounding', action="store_true", help="Enable Stochastic Rounding")
     parser.add_argument('--enable-fp-exceptions', action="store_true", help="Enable Floating Point Exceptions")
     parser.add_argument('--webdataset-percentage-to-use', type=int, default=100, choices=range(1, 101), help="Percentage of dataset to be used for training.")

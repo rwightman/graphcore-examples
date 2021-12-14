@@ -235,6 +235,9 @@ def create_training_model_opts(opts):
     model_opts.Training.accumulationAndReplicationReductionType(poptorch.ReductionType.Mean)
     model_opts.Training.gradientAccumulation(opts.gradient_accumulation)
 
+    if opts.auto_loss_scaling:
+        model_opts.Training.setAutomaticLossScaling(True)
+
     if opts.seed is not None:
         model_opts.randomSeed(opts.seed)
 
@@ -272,34 +275,38 @@ def get_optimizer(opts, model):
         params[1]['max_weight_norm'] = 0
 
     optimizer = None
+    opt_kwargs = {}
+    if not opts.auto_loss_scaling:
+        opt_kwargs['loss_scaling'] = opts.initial_loss_scaling
     if opts.optimizer == 'sgd':
         optimizer = SGD(
             params, lr=opts.lr, momentum=opts.momentum,
-            loss_scaling=opts.initial_loss_scaling, use_combined_accum=False)
+            use_combined_accum=False, **opt_kwargs)
     elif opts.optimizer == 'sgd_combined':
+        if not opts.auto_loss_scaling:
+            opt_kwargs['velocity_scaling'] = opts.initial_loss_scaling / opts.loss_velocity_scaling_ratio,
         optimizer = SGD(
             params, lr=opts.lr, momentum=opts.momentum,
-            loss_scaling=opts.initial_loss_scaling,
-            velocity_scaling=opts.initial_loss_scaling / opts.loss_velocity_scaling_ratio,
-            use_combined_accum=True)
+            use_combined_accum=True, **opt_kwargs)
     elif opts.optimizer == 'adamw':
         optimizer = AdamW(
             params, lr=opts.lr,
-            loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps)
+            eps=opts.optimizer_eps, **opt_kwargs)
     elif opts.optimizer == 'rmsprop':
         optimizer = RMSprop(
             params, lr=opts.lr, alpha=opts.rmsprop_decay, momentum=opts.momentum,
-            loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps)
+            eps=opts.optimizer_eps, **opt_kwargs)
     elif opts.optimizer == 'rmsprop_tf':
         optimizer = RMSprop(
             params, lr=opts.lr, alpha=opts.rmsprop_decay, momentum=opts.momentum,
-            loss_scaling=opts.initial_loss_scaling, eps=opts.optimizer_eps, use_tf_variant=True)
+            eps=opts.optimizer_eps, use_tf_variant=True, **opt_kwargs)
     elif opts.optimizer == 'lamb':
         optimizer = LAMB(
             params, lr=opts.lr,
-            loss_scaling=opts.initial_loss_scaling,
             eps=opts.optimizer_eps,
-            max_weight_norm=None)
+            max_weight_norm=None,
+            **opt_kwargs,
+        )
         optimizer.variable_attrs.markAsConstant("max_weight_norm")
     # Make optimizers distributed
     if opts.use_popdist:
